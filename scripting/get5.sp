@@ -127,6 +127,9 @@ ArrayList g_MapSides = null;
 ArrayList g_MapsLeftInVetoPool = null;
 MatchTeam g_LastVetoTeam;
 Menu g_ActiveVetoMenu = null;
+VetoAction g_VetoActions[6];
+MatchTeam g_VetoOrderTeams[6];
+int g_CurrentVetoRound = 0;
 
 /** Backup data **/
 bool g_WaitingForRoundBackup = false;

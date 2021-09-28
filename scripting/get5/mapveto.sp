@@ -5,6 +5,45 @@
 #define CONFIRM_NEGATIVE_VALUE "_"
 
 public void CreateVeto() {
+  switch (MaxMapsToPlay(g_MapsToWin))
+  {
+    case 7:
+    {
+        VetoAction tmp_VetoActions[] = {Ban, Ban, Ban, Ban, Ban, Ban};
+        MatchTeam tmp_VetoOrderTeams[] = {MatchTeam_Team1, MatchTeam_Team2, MatchTeam_Team1, MatchTeam_Team2, MatchTeam_Team1, MatchTeam_Team2};
+        g_VetoActions = tmp_VetoActions;
+        g_VetoOrderTeams = tmp_VetoOrderTeams;
+    }
+    case 5:
+    {
+        VetoAction tmp_VetoActions[] = {Ban, Ban, Ban, Ban, Ban, Ban};
+        MatchTeam tmp_VetoOrderTeams[] = {MatchTeam_Team1, MatchTeam_Team2, MatchTeam_Team2, MatchTeam_Team1, MatchTeam_Team2, MatchTeam_Team1};
+        g_VetoActions = tmp_VetoActions;
+        g_VetoOrderTeams = tmp_VetoOrderTeams;
+    }
+    case 3:
+    {
+        VetoAction tmp_VetoActions[] = {Ban, Ban, Pick, Pick, Ban, Ban};
+        MatchTeam tmp_VetoOrderTeams[] = {MatchTeam_Team1, MatchTeam_Team2, MatchTeam_Team1, MatchTeam_Team2, MatchTeam_Team1, MatchTeam_Team2};
+        g_VetoActions = tmp_VetoActions;
+        g_VetoOrderTeams = tmp_VetoOrderTeams;
+    }
+    case 2:
+    {
+        VetoAction tmp_VetoActions[] = {Ban, Ban, Ban, Ban, Pick, Pick};
+        MatchTeam tmp_VetoOrderTeams[] = {MatchTeam_Team1, MatchTeam_Team2, MatchTeam_Team2, MatchTeam_Team1, MatchTeam_Team2, MatchTeam_Team1};
+        g_VetoActions = tmp_VetoActions;
+        g_VetoOrderTeams = tmp_VetoOrderTeams;
+    }
+    case 1:
+    {
+        VetoAction tmp_VetoActions[] = {Ban, Ban, Ban, Ban, Ban, Ban};
+        MatchTeam tmp_VetoOrderTeams[] = {MatchTeam_Team1, MatchTeam_Team2, MatchTeam_Team1, MatchTeam_Team2, MatchTeam_Team1, MatchTeam_Team2};
+        g_VetoActions = tmp_VetoActions;
+        g_VetoOrderTeams = tmp_VetoOrderTeams;
+    }
+  }
+  
   if (g_MapPoolList.Length % 2 == 0) {
     LogError(
         "Warning, the maplist is even number sized (%d maps), vetos may not function correctly!",
@@ -21,8 +60,7 @@ public Action Timer_VetoCountdown(Handle timer) {
   static int warningsPrinted = 0;
   if (warningsPrinted >= g_VetoCountdownCvar.IntValue) {
     warningsPrinted = 0;
-    MatchTeam startingTeam = OtherMatchTeam(g_LastVetoTeam);
-    VetoController(g_VetoCaptains[startingTeam]);
+    VetoController();
     return Plugin_Stop;
   } else {
     warningsPrinted++;
@@ -55,120 +93,93 @@ public void VetoFinished() {
 }
 
 // Main Veto Controller
+public void VetoController() {
+  //pick side for last picked map
+  if ( g_MapSides.Length < g_MapsToPlay.Length){
+    int choosing_captain = GetNextTeamCaptain(g_VetoCaptains[g_LastVetoTeam]);
 
-public void VetoController(int client) {
-  if (!IsPlayer(client) || GetClientMatchTeam(client) == MatchTeam_TeamSpec) {
-    AbortVeto();
-  }
-
-  int mapsLeft = g_MapsLeftInVetoPool.Length;
-  int maxMaps = MaxMapsToPlay(g_MapsToWin);
-
-  int mapsPicked = g_MapsToPlay.Length;
-  int sidesSet = g_MapSides.Length;
-
-  int seriesScore = g_TeamSeriesScores[MatchTeam_Team1] + g_TeamSeriesScores[MatchTeam_Team2];
-
-  // This is a dirty hack to get ban/ban/pick/pick/ban/ban
-  // instead of straight vetoing until the maplist is the length
-  // of the series.
-  // This only applies to a standard Bo3 in the 7-map pool.
-  // TODO: It should be written more generically.
-  bool bo3_hack = false;
-  if (maxMaps == 3 && (mapsLeft == 4 || mapsLeft == 5) && g_MapPoolList.Length == 7) {
-    bo3_hack = true;
-  }
-
-  // Yet another dirty hack to skip the last two bans if we are
-  // in a situation where one a team has map advantage.
-  bool bo3_last_veto_hack = false;
-  if (maxMaps == 3 && mapsLeft <= 3 && seriesScore > 0 && g_MapPoolList.Length == 7) {
-    bo3_last_veto_hack = true;
-  }
-
-  // This is also a bit hacky.
-  // The purpose is to force the veto process to take a
-  // ban/ban/ban/ban/pick/pick/last map unused process for BO2's.
-  bool bo2_hack = false;
-  if (g_BO2Match && (mapsLeft == 3 || mapsLeft == 2)) {
-    bo2_hack = true;
-  }
-
-  if (sidesSet < mapsPicked) {
     if (g_MatchSideType == MatchSideType_Standard) {
-      GiveSidePickMenu(client);
-
+      if(! g_BO2Match && g_MapsLeftInVetoPool.Length == 1){
+        g_MapSides.Push(SideChoice_KnifeRound);
+        VetoController();
+      }else{
+        GiveSidePickMenu(choosing_captain);
+      }
     } else if (g_MatchSideType == MatchSideType_AlwaysKnife) {
       g_MapSides.Push(SideChoice_KnifeRound);
-      VetoController(client);
-
+      VetoController();
     } else if (g_MatchSideType == MatchSideType_NeverKnife) {
       g_MapSides.Push(SideChoice_Team1CT);
-      VetoController(client);
+      VetoController();
     }
+  }else{
+    int maxMaps = MaxMapsToPlay(g_MapsToWin);
+    int seriesScore = g_TeamSeriesScores[MatchTeam_Team1] + g_TeamSeriesScores[MatchTeam_Team2];
+    
+    //all required picks were made we can end the veto even if maps are left in the pool
+    if (g_MapsToPlay.Length >= maxMaps-seriesScore){
+      //add maps to the front of the maplist to be skipped by the seriesScore
+      if (seriesScore > 0){
+        char mapName[PLATFORM_MAX_PATH];
+        for (int i = 0; i < seriesScore; i++) {
+          // Get the next map in the veto pool
+          g_MapsLeftInVetoPool.GetString(0, mapName, sizeof(mapName));
+          g_MapsLeftInVetoPool.Erase(0);
 
-  } else if (mapsLeft == seriesScore || bo3_last_veto_hack) {
-    // We have as many maps left as the total series score, or we can skip the last two
-    // bans in a bo3 which means some maps will be skipped (i.e. they have already been "won" by a
-    // team)
-    // If series score is 0 we won't get here
+          // Add it to the front of the active maplist
+          g_MapsToPlay.ShiftUp(0);
+          g_MapsToPlay.SetString(0, mapName);
 
-    // Add maps to the front of the active maplist equal to the total series score, as these are the
-    // maps
-    // that will be skipped
-    char mapName[PLATFORM_MAX_PATH];
-    for (int i = 0; i < seriesScore; i++) {
-      // Get the next map in the veto pool
+          // Add a side type to map sides too, so the sides don't come out of order
+          g_MapSides.ShiftUp(0);
+          g_MapSides.Set(0, SideChoice_KnifeRound);
+        }
+      }
+      VetoFinished();
+    // The remaining maps in the pool are played and thus added to the maplist
+    }else if (g_MapsLeftInVetoPool.Length == maxMaps-seriesScore-g_MapsToPlay.Length){
+      char mapName[PLATFORM_MAX_PATH];
+      
       g_MapsLeftInVetoPool.GetString(0, mapName, sizeof(mapName));
       g_MapsLeftInVetoPool.Erase(0);
+      g_MapsToPlay.PushString(mapName);
 
-      // Add it to the front of the active maplist
-      g_MapsToPlay.ShiftUp(0);
-      g_MapsToPlay.SetString(0, mapName);
+      //in a bo2 if there was a pick before the last action then the last map side has to be picked
+      if(! (g_BO2Match && g_VetoActions[g_CurrentVetoRound-1] == Pick)){
+        if (g_MatchSideType == MatchSideType_Standard) {
+          g_MapSides.Push(SideChoice_KnifeRound);
+        } else if (g_MatchSideType == MatchSideType_AlwaysKnife) {
+          g_MapSides.Push(SideChoice_KnifeRound);
+        } else if (g_MatchSideType == MatchSideType_NeverKnife) {
+          g_MapSides.Push(SideChoice_Team1CT);
+        }
+      }
+      EventLogger_MapPicked(MatchTeam_TeamNone, mapName, g_MapsToPlay.Length - 1);
 
-      // Add a side type to map sides too, so the sides don't come out of order
-      g_MapSides.ShiftUp(0);
-      g_MapSides.Set(0, SideChoice_KnifeRound);
+      LogDebug("Calling Get5_OnMapPicked(team=%d, map=%s)", MatchTeam_TeamNone, mapName);
+      Call_StartForward(g_OnMapPicked);
+      Call_PushCell(MatchTeam_TeamNone);
+      Call_PushString(mapName);
+      Call_Finish();
+
+      VetoController();
+
+    }else{
+      int current_captain = g_VetoCaptains[g_VetoOrderTeams[g_CurrentVetoRound]];
+      if (!IsPlayer(current_captain) || GetClientMatchTeam(current_captain) == MatchTeam_TeamSpec) {
+        AbortVeto();
+      }
+
+      //Pick
+      if ( g_VetoActions[g_CurrentVetoRound] == Pick){
+        g_CurrentVetoRound++;
+        GiveMapPickMenu(current_captain);
+      //Ban
+      }else if (g_VetoActions[g_CurrentVetoRound] == Ban){
+        g_CurrentVetoRound++;
+        GiveMapVetoMenu(current_captain);
+      }
     }
-
-    // We're specifically not firing any events here, as the maps will be skipped anyway
-    // TODO: maybe we should?
-
-    VetoFinished();
-
-  } else if (mapsLeft == 1) {
-    if (g_BO2Match) {
-      // Terminate the veto since we've had ban-ban-ban-ban-pick-pick
-      VetoFinished();
-      return;
-    }
-
-    // Only 1 map left in the pool, add it directly to the active maplist.
-    char mapName[PLATFORM_MAX_PATH];
-    g_MapsLeftInVetoPool.GetString(0, mapName, sizeof(mapName));
-    g_MapsToPlay.PushString(mapName);
-
-    if (g_MatchSideType == MatchSideType_Standard) {
-      g_MapSides.Push(SideChoice_KnifeRound);
-    } else if (g_MatchSideType == MatchSideType_AlwaysKnife) {
-      g_MapSides.Push(SideChoice_KnifeRound);
-    } else if (g_MatchSideType == MatchSideType_NeverKnife) {
-      g_MapSides.Push(SideChoice_Team1CT);
-    }
-
-    EventLogger_MapPicked(MatchTeam_TeamNone, mapName, g_MapsToPlay.Length - 1);
-
-    LogDebug("Calling Get5_OnMapPicked(team=%d, map=%s)", MatchTeam_TeamNone, mapName);
-    Call_StartForward(g_OnMapPicked);
-    Call_PushCell(MatchTeam_TeamNone);
-    Call_PushString(mapName);
-    Call_Finish();
-
-    VetoFinished();
-  } else if (mapsLeft + mapsPicked <= maxMaps || bo3_hack || bo2_hack) {
-    GiveMapPickMenu(client);
-  } else {
-    GiveMapVetoMenu(client);
   }
 }
 
@@ -282,8 +293,8 @@ public int MapVetoMenuHandler(Menu menu, MenuAction action, int param1, int para
     Call_PushString(mapName);
     Call_Finish();
 
-    VetoController(GetNextTeamCaptain(client));
     g_LastVetoTeam = team;
+    VetoController();
 
   } else if (action == MenuAction_Cancel) {
     if (g_GameState == Get5State_Veto) {
@@ -340,7 +351,7 @@ public int MapPickMenuHandler(Menu menu, MenuAction action, int param1, int para
 
     Get5_MessageToAll("%t", "TeamPickedMapInfoMessage", g_FormattedTeamNames[team], mapName,
                       g_MapsToPlay.Length);
-    g_LastVetoTeam = team;
+    
 
     EventLogger_MapPicked(team, mapName, g_MapsToPlay.Length - 1);
 
@@ -349,8 +360,9 @@ public int MapPickMenuHandler(Menu menu, MenuAction action, int param1, int para
     Call_PushCell(team);
     Call_PushString(mapName);
     Call_Finish();
-
-    VetoController(GetNextTeamCaptain(client));
+    
+    g_LastVetoTeam = team;
+    VetoController();
 
   } else if (action == MenuAction_Cancel) {
     if (g_GameState == Get5State_Veto) {
@@ -425,7 +437,7 @@ public int SidePickMenuHandler(Menu menu, MenuAction action, int param1, int par
     Call_PushCell(selectedSide);
     Call_Finish();
 
-    VetoController(client);
+    VetoController();
 
   } else if (action == MenuAction_Cancel) {
     if (g_GameState == Get5State_Veto) {

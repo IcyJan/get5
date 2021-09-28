@@ -38,6 +38,11 @@ enum SideChoice {
   SideChoice_KnifeRound,  // There will be a knife round to choose sides
 };
 
+enum VetoAction {
+  Pick,
+  Ban,
+};
+
 // Called each get5-event with JSON formatted event text.
 forward void Get5_OnEvent(const char[] eventJson);
 
